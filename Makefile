@@ -2,6 +2,7 @@
 
 all: configure
 	cmake --build build -j$(shell nproc)
+	$(MAKE) copytosuyu
 
 configure:
 	cmake --toolchain=cmake/toolchain.cmake -S . -B build
@@ -11,3 +12,11 @@ clean:
 
 update-headers:
 	git submodule update --remote ./include/
+
+copytosuyu:
+	mkdir -p /mnt/c/Users/Logan/AppData/Roaming/suyu/load/0100000000010000/LimitJump/exefs
+	mkdir -p /mnt/c/Users/Logan/AppData/Roaming/suyu/load/0100000000010000/LimitJump/romfs
+
+	cp ./build/main.npdm ./build/subsdk9 /mnt/c/Users/Logan/AppData/Roaming/suyu/load/0100000000010000/LimitJump/exefs/
+
+	cp -r ./romfs/. /mnt/c/Users/Logan/AppData/Roaming/suyu/load/0100000000010000/LimitJump/romfs/
