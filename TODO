@@ -1,21 +1,14 @@
 # Exemple de liste TODO pour le projet LimitJump
 
 - [X] Recherche sur les type de saut de Mario (saut et comment capturer lorsque Mario fait ces sauts)
-- [ ] Recherche sur le bloquage des sauts de Mario
-- [ ] Recherche sur des bruitages si plus de sauts
+- [X] Recherche sur le bloquage des sauts de Mario
+- [X] Recherche sur des bruitages si plus de sauts
 - [ ] Ajout d'un compteur de saut restant (UI)
 - [ ] Scripting du compteur de saut
 - [ ] Sauvegarde des sauts restant de la partie
 - [ ] Ajout de possibilité de regagner des sauts
 
-Type de sauts de Mario :
-Saut normal : PlayerActorHakoniwaExeJump
-Saut accroupie : PlayerActorHakoniwaExeJump
-Saut arrière (Mario avance puis fait un demi tour en sautant) : PlayerActorHakoniwaExeJump
-Saut toupie : PlayerActorHakoniwaExeJump
-Saut cappy : PlayerActorHakoniwaExeJump
-Saut murale : 
-Saut sur acteurs : PlayerActorHakoniwaExeJump
-Saut récup Cappy : 
-Saut long jump : PlayerActorHakoniwaLongJump
-Gamane : GamaneJump
+BUGS CONNUS:
+- Les chapimorphose peuvent sauter en secouant la manette
+- Le dive peut être répété entrainant un deuxième saut.
+- Les fleures trampoline spam leur animation de saut

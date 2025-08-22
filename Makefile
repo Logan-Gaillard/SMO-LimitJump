@@ -19,4 +19,4 @@ copytosuyu:
 
 	cp ./build/main.npdm ./build/subsdk9 /mnt/c/Users/Logan/AppData/Roaming/suyu/load/0100000000010000/LimitJump/exefs/
 
-	cp -r ./romfs/. /mnt/c/Users/Logan/AppData/Roaming/suyu/load/0100000000010000/LimitJump/romfs/
+	cp -r ./romfs/ /mnt/c/Users/Logan/AppData/Roaming/suyu/load/0100000000010000/LimitJump/romfs/
