@@ -31,13 +31,13 @@ class JumpCounter : public al::LayoutActor {
         void exeAppear();
         void exeWait();
         void exeEnd();
-        void exeChange();
+        void exeAdd();
+        void exeSub();
         void exeCountAnimChange();
 
     private:
         s32 mPrevJumpRemain = 0;
         s32 mJumpRemain = 0;
-        s32 mNumDigits = -1;
         s32 mAnimationCount = 0;
 
         bool mIsUpdateCount = false;

@@ -2,6 +2,7 @@
 #include "Library/Layout/IUseLayout.h"
 #include "Library/Layout/LayoutActor.h"
 #include "Library/Layout/LayoutActionKeeper.h"
+#include "Library/Layout/LayoutActionFunction.h"
 #include "Library/Nerve/Nerve.h"
 #include "Library/Nerve/NerveSetupUtil.h"
 #include "Library/Nerve/NerveUtil.h"
@@ -9,31 +10,27 @@
 #include "Library/Layout/LayoutActorUtil.h"
 #include "Library/Layout/LayoutInitInfo.h"
 
-#include "logger/SDLogger.hpp"
-
 #include "JumpData.h"
 
 namespace {
     NERVE_IMPL(JumpCounter, Appear)
     NERVE_IMPL(JumpCounter, Wait)
     NERVE_IMPL(JumpCounter, End)
-    NERVE_IMPL(JumpCounter, Change)
-    NERVE_IMPL(JumpCounter, CountAnimChange)
+    NERVE_IMPL(JumpCounter, Add)
+    NERVE_IMPL(JumpCounter, Sub)
+    NERVE_IMPL(JumpCounter, CountAnimChange);
 
     NERVES_MAKE_NOSTRUCT(JumpCounter, Wait);
-    NERVES_MAKE_STRUCT(JumpCounter, Appear, End, Change, CountAnimChange);
+    NERVES_MAKE_STRUCT(JumpCounter, Appear, End, Add, Sub, CountAnimChange);
 }
 
 JumpCounter::JumpCounter(const char* name, const al::LayoutInitInfo& initInfo) : al::LayoutActor(name){
     al::initLayoutActor(this, initInfo, "JumpCounter", 0);
-    mNumDigits = 2;
     mPanelName = "Jump";
 
     initNerve(&NrvJumpCounter.End, 0);
     kill();
     updatePanel(mJumpRemain);
-
-    SDLogger::log("JumpCounter main group : %s", this->mLayoutActionKeeper->mMainGroupName);
 }
 
 void JumpCounter::kill(){
@@ -55,7 +52,7 @@ bool JumpCounter::isWait() const {
 
 void JumpCounter::tryStart(){
     if(al::isNerve(this, &NrvJumpCounter.End)){
-        al::startAction(this, "Appear", "Main");
+        al::startAction(this, "Appear", nullptr);
         updateCountImmidiate();
         al::LayoutActor::appear();
         al::setNerve(this, &NrvJumpCounter.Appear);
@@ -90,8 +87,12 @@ bool JumpCounter::tryUpdateCount(){
         return false;
     }
 
+    if(newJumpRemain > mJumpRemain)
+        al::setNerve(this, &NrvJumpCounter.Add);
+    else
+        al::setNerve(this, &NrvJumpCounter.Sub);
+
     mJumpRemain = newJumpRemain;
-    al::setNerve(this, &NrvJumpCounter.Change);
     return true;
 }
 
@@ -102,13 +103,13 @@ s32 JumpCounter::getCountFromData() const {
 
 
 void JumpCounter::exeAppear(){
-    if(al::isActionEnd(this, "Main"))
+    if(al::isActionEnd(this, nullptr))
         al::setNerve(this, &Wait);
 }
 
 void JumpCounter::exeWait(){
     if(al::isFirstStep(this))
-        al::startAction(this, "Wait", "Main");
+        al::startAction(this, "Wait", nullptr);
 
     if(mIsUpdateCount)
         tryUpdateCount();
@@ -116,21 +117,32 @@ void JumpCounter::exeWait(){
 
 void JumpCounter::exeEnd(){
     if(al::isFirstStep(this))
-        al::startAction(this, "End", "Main");
+        al::startAction(this, "End", nullptr);
 
-    if(al::isActionEnd(this, "Main"))
+    if(al::isActionEnd(this, nullptr))
         kill();
 }
 
-void JumpCounter::exeChange(){
+void JumpCounter::exeAdd(){
     if(al::isFirstStep(this)){
-        al::startAction(this, "Change", mPanelName);
+        al::startAction(this, "Add", mPanelName);
         updatePanel(mJumpRemain);
     }
 
     if(al::isActionEnd(this, "Jump"))
         al::setNerve(this, &Wait);
 }
+
+void JumpCounter::exeSub(){
+    if(al::isFirstStep(this)){
+        al::startAction(this, "Sub", mPanelName);
+        updatePanel(mJumpRemain);
+    }
+
+    if(al::isActionEnd(this, "Jump"))
+        al::setNerve(this, &Wait);
+}
+
 
 void JumpCounter::exeCountAnimChange(){
     if(al::isFirstStep(this))
