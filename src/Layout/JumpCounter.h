@@ -21,7 +21,7 @@ class JumpCounter : public al::LayoutActor {
         void tryStart();
         void updateCountImmidiate();
         void tryEnd();
-        void startCountAnim(s32 jumpRemain);
+        void startNoAuthAnim();
         bool tryUpdateCount();
 
         s32 getCountFromData() const;
@@ -33,7 +33,7 @@ class JumpCounter : public al::LayoutActor {
         void exeEnd();
         void exeAdd();
         void exeSub();
-        void exeCountAnimChange();
+        void exeNoAuth();
 
     private:
         s32 mPrevJumpRemain = 0;

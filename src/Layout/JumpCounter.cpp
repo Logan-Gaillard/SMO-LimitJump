@@ -11,6 +11,7 @@
 #include "Library/Layout/LayoutInitInfo.h"
 
 #include "JumpData.h"
+#include "logger/SDLogger.hpp"
 
 namespace {
     NERVE_IMPL(JumpCounter, Appear)
@@ -18,10 +19,10 @@ namespace {
     NERVE_IMPL(JumpCounter, End)
     NERVE_IMPL(JumpCounter, Add)
     NERVE_IMPL(JumpCounter, Sub)
-    NERVE_IMPL(JumpCounter, CountAnimChange);
+    NERVE_IMPL(JumpCounter, NoAuth);
 
     NERVES_MAKE_NOSTRUCT(JumpCounter, Wait);
-    NERVES_MAKE_STRUCT(JumpCounter, Appear, End, Add, Sub, CountAnimChange);
+    NERVES_MAKE_STRUCT(JumpCounter, Appear, End, Add, Sub, NoAuth);
 }
 
 JumpCounter::JumpCounter(const char* name, const al::LayoutInitInfo& initInfo) : al::LayoutActor(name){
@@ -72,14 +73,6 @@ void JumpCounter::tryEnd(){
     }
 }
 
-void JumpCounter::startCountAnim(s32 jumpNum){
-    mPrevJumpRemain = mJumpRemain;
-    mJumpRemain = jumpNum;
-
-    al::setNerve(this, &NrvJumpCounter.CountAnimChange);
-
-}
-
 bool JumpCounter::tryUpdateCount(){
     s32 newJumpRemain = getCountFromData();
 
@@ -87,7 +80,7 @@ bool JumpCounter::tryUpdateCount(){
         return false;
     }
 
-    if(newJumpRemain > mJumpRemain)
+    if(newJumpRemain > mJumpRemain && (isWait() || al::isNerve(this, &NrvJumpCounter.NoAuth) || al::isNerve(this, &NrvJumpCounter.Add) || al::isNerve(this, &NrvJumpCounter.Sub)))
         al::setNerve(this, &NrvJumpCounter.Add);
     else
         al::setNerve(this, &NrvJumpCounter.Sub);
@@ -98,6 +91,12 @@ bool JumpCounter::tryUpdateCount(){
 
 s32 JumpCounter::getCountFromData() const {
     return JumpData::getJumpRemain();
+}
+
+void JumpCounter::startNoAuthAnim(){
+    if(isWait() || al::isNerve(this, &NrvJumpCounter.NoAuth)){
+        return al::setNerve(this, &NrvJumpCounter.NoAuth);
+    }
 }
 
 
@@ -129,7 +128,7 @@ void JumpCounter::exeAdd(){
         updatePanel(mJumpRemain);
     }
 
-    if(al::isActionEnd(this, "Jump"))
+    if(al::isActionEnd(this, mPanelName))
         al::setNerve(this, &Wait);
 }
 
@@ -139,21 +138,15 @@ void JumpCounter::exeSub(){
         updatePanel(mJumpRemain);
     }
 
-    if(al::isActionEnd(this, "Jump"))
+    if(al::isActionEnd(this, mPanelName))
         al::setNerve(this, &Wait);
 }
 
-
-void JumpCounter::exeCountAnimChange(){
-    if(al::isFirstStep(this))
-        mAnimationCount = mPrevJumpRemain;
-
-    if(al::isGreaterEqualStep(this, 60)){
-        updatePanel(mJumpRemain);
-        al::setNerve(this, &Wait);
-        return;
+void JumpCounter::exeNoAuth(){
+    if(al::isFirstStep(this)){
+        al::startAction(this, "NoAuth", mPanelName);
     }
 
-    s32 animationCount = al::calcNerveValue(this, 60, mPrevJumpRemain, mJumpRemain);
-    updatePanel(animationCount);
+    if(al::isActionEnd(this, mPanelName))
+        al::setNerve(this, &Wait);
 }

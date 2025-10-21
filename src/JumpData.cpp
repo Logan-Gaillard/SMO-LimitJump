@@ -13,6 +13,6 @@ JumpData& JumpData::instance() {
 }
 
 
-s32 JumpData::readFromSave(){
-    return (s32)10;
+int JumpData::readFromSave(){
+    return 10;
 }

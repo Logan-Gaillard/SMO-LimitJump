@@ -7,14 +7,14 @@ class JumpData {
         JumpData();
         static JumpData& instance();
 
-        static void setJumpRemain(s32 remain){ instance().mJumpRemain = remain;}
-        static void increaseJumpRemain(s32 amount){ instance().mJumpRemain += amount;}
-        static void decreaseJumpRemain(s32 amount){ instance().mJumpRemain -= amount;}
+        static void setJumpRemain(int remain){ instance().mJumpRemain = remain;}
+        static void increaseJumpRemain(int amount){ instance().mJumpRemain += amount;}
+        static void decreaseJumpRemain(int amount){ instance().mJumpRemain -= amount;}
 
-        static const s32 getJumpRemain(){ return instance().mJumpRemain;}
+        static const int getJumpRemain(){ return instance().mJumpRemain;}
 
-        static s32 readFromSave();
+        static int readFromSave();
 
     private:
-        s32 mJumpRemain =-1;
+        int mJumpRemain =-1;
 };
