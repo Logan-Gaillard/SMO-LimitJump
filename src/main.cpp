@@ -1,6 +1,7 @@
 #include <exlaunch.hpp>
 #include <string.h>
 
+#include "Enemies/KuriboWing/KuriboWingJump.hpp"
 #include "Layout/StageSceneLayout.h"
 #include "Library/Controller/JoyPadAccelPoseAnalyzer.h"
 #include "Library/LiveActor/LiveActor.h"
@@ -14,6 +15,7 @@
 #include "Library/Player/PlayerHolder.h"
 #include "Library/Draw/SubCameraRenderer.h"
 
+#include "Player/PlayerHackKeeper.h"
 #include "Util/PlayerUtil.h"
 #include "Util/Hack.h"
 
@@ -27,7 +29,6 @@
 #include "System/GameSystem.h"
 #include "hook/trampoline.hpp"
 #include "prim/seadSafeString.h"
-#include "types.h"
 
 #include "logger/SDLogger.hpp" //My own logger (Mainly maked for another repo) it print log on folder and by svc too
 #include "PlayerStates/PlayerStateSwim/PlayerStateSwim.h" //is Mario Swiming
@@ -42,20 +43,7 @@ JumpCounter* jumpCounter = nullptr; //Jump remain layout
 bool isHakoniwaDemo = false;        //If Mario can't move (demo mode)
 bool isSurfaceHakoniwa = false;     // If Mario is on the surface on water or not
 bool needPlayJumpSE = false;        // If we need to play Sound Effect for not having enough jumps
-bool isPlayerHack = false;
-int kuriboWingCooldown = 60;        // Kuribo Wing cooldown to increase jump very 60 frames if is in the air
-
-void updateJumpRemaining(bool decrease, int amount) {
-    if (decrease) {
-        if(JumpData::getJumpRemain() > 0)
-            JumpData::decreaseJumpRemain(amount);
-    } else {
-        JumpData::increaseJumpRemain(amount);
-    }
-    int jumpRemain = JumpData::getJumpRemain();
-    SDLogger::log("Il reste %i sauts", jumpRemain);
-    jumpCounter->tryUpdateCount();
-}
+bool isPlayerHack = false;          // if the player is currently in capture
 
 HOOK_DEFINE_TRAMPOLINE(GameSystemInit){
     static void Callback(GameSystem *thisPtr) {
@@ -89,13 +77,11 @@ HOOK_DEFINE_TRAMPOLINE(JoyPadAccelPoseAnalyzerIsSwingAnyHand){
     static bool Callback(al::JoyPadAccelPoseAnalyzer* thisPtr) {
         int jumpRemain = JumpData::getJumpRemain();
         bool result = Orig(thisPtr);
-        //SDLogger::log("Résultat: %s, jumps: %i", result ? "true" : "false", jumpRemain);
-
         if(result && jumpRemain <= 0 && isPlayerHack) {
-            //needPlayJumpSE = true;
+            //Play sound effect
+            // TODO : Make a cooldown for soudEffect
             return false;
         }
-
         return result;
     }
 };
@@ -106,7 +92,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayerActorHakoniwaControl){
 
         if(!isHakoniwaDemo) {
             if(al::isPadTriggerUp())
-                updateJumpRemaining(false, 2);
+                JumpData::updateJumpRemain(false, 2);
         
             if(needPlayJumpSE) {
                 jumpCounter->startNoAuthAnim();
@@ -185,34 +171,26 @@ HOOK_DEFINE_TRAMPOLINE(SetNerveHook){
                 }
             }
 
-            updateJumpRemaining(true, 1);
+            JumpData::updateJumpRemain();
         }
         return Orig(user, nerve);
     }
 };
 
-HOOK_DEFINE_TRAMPOLINE(KuriboWingHackStateControl){
-    static void Callback(KuriboWingHackState* thisPtr){
-        if(!thisPtr->mHackerStateWingFly->isOnGround()){
-            int jumpRemain = JumpData::getJumpRemain();
-            if(jumpRemain <= 0){
-                if(thisPtr->mHackerStateWingFly->mHacker){
-                    SDLogger::log("End Hack");
-                    rs::endHack((IUsePlayerHack**) &thisPtr->mHackerStateWingFly->mHacker);
-                }
-                return;
-            }
-            if(kuriboWingCooldown > 0){
-                kuriboWingCooldown--;
-            }else{
-                updateJumpRemaining(true, 1);
-                kuriboWingCooldown = 60;
-            }
+HOOK_DEFINE_TRAMPOLINE(PlayerActorHakoniwaHack){
+    static void Callback(PlayerActorHakoniwa* thisPtr){
+        PlayerHackKeeper *playerHackKeeper = thisPtr->getPlayerHackKeeper();
+        if(al::isFirstStep(thisPtr)){
+            SDLogger::log("Now in hack : %s", playerHackKeeper->getCurrentHackName());
         }
-        return Orig(thisPtr);
+        
+        if (strcmp(playerHackKeeper->getCurrentHackName(), "KuriboWing") == 0) {
+            if(JumpData::getJumpRemain() == 0 && !playerHackKeeper->isActiveHackStartDemo()) playerHackKeeper->forceKillHack();
+        }
+        
+        Orig(thisPtr);
     }
 };
-
 
 //-------------
 // LAYOUT PART
@@ -221,6 +199,7 @@ HOOK_DEFINE_TRAMPOLINE(ConstructStageSceneLayout){
     static void Callback(StageSceneLayout* thisPtr, const char* char1, const al::LayoutInitInfo& layoutInitInfo, const al::PlayerHolder* playerHolder, const al::SubCameraRenderer* subCameraRenderer){
         Orig(thisPtr, char1, layoutInitInfo, playerHolder, subCameraRenderer);
         jumpCounter = new JumpCounter("JumpCounter", layoutInitInfo);
+        JumpData::instance().setJumpCounter(jumpCounter);
     }
 };
 
@@ -251,12 +230,13 @@ extern "C" void exl_main(void* x0, void* x1) {
 
     SetNerveHook::InstallAtSymbol("_ZN2al8setNerveEPNS_9IUseNerveEPKNS_5NerveE");
 
-    // Layout Part
     ConstructStageSceneLayout::InstallAtSymbol("_ZN16StageSceneLayoutC1EPKcRKN2al14LayoutInitInfoEPKNS2_12PlayerHolderEPKNS2_17SubCameraRendererE");
     CoinCounterTryStart::InstallAtSymbol("_ZN11CoinCounter8tryStartEv");
     CoinCounterTryEnd::InstallAtSymbol("_ZN11CoinCounter6tryEndEv");
 
-    KuriboWingHackStateControl::InstallAtSymbol("_ZN19KuriboWingHackState7controlEv"); 
+    KuriboWingJump::instance().initHooks();
+
+    PlayerActorHakoniwaHack::InstallAtSymbol("_ZN19PlayerActorHakoniwa7exeHackEv");
 
 
     SDLogger::instance().init();
