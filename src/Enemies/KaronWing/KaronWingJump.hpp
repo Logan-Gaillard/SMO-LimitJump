@@ -1,14 +1,14 @@
 #pragma once
 
-class KuriboWingJump {
+class KaronWingJump {
 public:
-    KuriboWingJump() = default;
+    KaronWingJump() = default;
 
     static const char* name;
     static const int decreaseDuration;
 
-    static KuriboWingJump &instance(){
-        static KuriboWingJump instance;
+    static KaronWingJump &instance(){
+        static KaronWingJump instance;
         return instance;
     }
 

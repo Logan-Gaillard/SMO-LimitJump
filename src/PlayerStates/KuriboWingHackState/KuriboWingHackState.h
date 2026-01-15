@@ -12,7 +12,7 @@ class HackerStateWingFly;
 
 class KuriboWingHackState : public al::ActorStateBase {
 public:
-    KuriboWingHackState(const char* name);
+    KuriboWingHackState(al::LiveActor* liveActor, IUsePlayerHack* playerHack);
 
     void appear() override;
 
