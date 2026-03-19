@@ -10,6 +10,8 @@
 #include "Library/Nerve/IUseNerve.h"
 #include "Library/Nerve/Nerve.h"
 #include "Library/Nerve/NerveKeeper.h"
+#include "Library/Nerve/NerveAction.h"
+#include "Library/Nerve/NerveActionCtrl.h"
 #include "Library/Se/SeFunction.h"
 #include "Library/Nerve/NerveUtil.h"
 #include "Library/Nature/NatureUtil.h"
@@ -24,6 +26,7 @@
 #include "Util/PlayerUtil.h"
 #include "Util/Hack.h"
 
+#include "Save/SaveJump.h"
 #include "Player/HackerStateWingFly.h"
 #include "Player/PlayerInputFunction.h"
 #include "Player/PlayerActorHakoniwa.h"
@@ -117,6 +120,9 @@ HOOK_DEFINE_TRAMPOLINE(PlayerActorHakoniwaControl){
     static void Callback(PlayerActorHakoniwa *thisPtr) {
         isHakoniwaDemo = rs::isActiveDemo(thisPtr);
 
+        const char* nerveActionName  = thisPtr->getNerveKeeper()->getActionCtrl()->getAction(0)->getActionName();
+        SDLogger::log("Current nerve action: %s", nerveActionName);
+
         if(!isHakoniwaDemo) {
             if(al::isPadTriggerUp())
                 JumpData::updateJumpRemain(false, 2);
@@ -145,7 +151,7 @@ bool isJumpingNerve(al::Nerve* nerve){
     //PlayerStateHeadSliding
     al::Nerve* pshsdive = (al::Nerve*) exl::util::modules::GetTargetOffset(0x001D7E118);
     //PlayerStateLongJump
-    al::Nerve* psljJump = (al::Nerve*) exl::util::modules::GetTargetOffset(0x01D7E6D8);
+    //al::Nerve* psljJump = (al::Nerve*) exl::util::modules::GetTargetOffset(0x01D7E6D8);
 
     //KuriboStateHack
     al::Nerve* kshJump = (al::Nerve*) exl::util::modules::GetTargetOffset(0x01C9EA38);
@@ -183,7 +189,7 @@ bool isJumpingNerve(al::Nerve* nerve){
         nerve == psnwjWallJump ||
         nerve == pshsdive ||
 
-        nerve == psljJump ||
+        //nerve == psljJump ||
 
         nerve == kshJump ||
         nerve == kshHigh ||
@@ -211,11 +217,10 @@ bool isJumpingNerve(al::Nerve* nerve){
     }
 
     return false;
-}
+};
 
 HOOK_DEFINE_TRAMPOLINE(SetNerveHook){
     static void Callback(al::IUseNerve* user, al::Nerve* nerve){
-        //SDLogger::log("Nerve changed to %x", nerve);
         if(isJumpingNerve(nerve)) {
             int jumpRemain = JumpData::getJumpRemain();
             al::Nerve* currentNerve = const_cast<al::Nerve*>(user->getNerveKeeper()->getCurrentNerve());
@@ -225,19 +230,20 @@ HOOK_DEFINE_TRAMPOLINE(SetNerveHook){
                 if(isJumpingNerve(currentNerve)){
                     return;
                 }else{
-                    return Orig(user, currentNerve);
+                    Orig(user, currentNerve);
+                    return;
                 }
             }
             JumpData::updateJumpRemain();
         }
-        return Orig(user, nerve);
+        Orig(user, nerve);
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(PlayerActorHakoniwaHack){
     static void Callback(PlayerActorHakoniwa* thisPtr){
         PlayerHackKeeper *playerHackKeeper = thisPtr->getPlayerHackKeeper();
-        int jumpRemain = JumpData::getJumpRemain();
+
         if(al::isFirstStep(thisPtr)){
             SDLogger::log("Now in hack : %s", playerHackKeeper->getCurrentHackName());
 
@@ -314,4 +320,6 @@ extern "C" void exl_main(void* x0, void* x1) {
 
     JumpData::instance();
     JumpData::readFromSave();
+
+    SaveJump::initHooks();
 };

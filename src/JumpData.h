@@ -11,6 +11,7 @@ class JumpData {
         static const int getJumpRemain(){ return instance().mJumpRemain;}
         static int readFromSave();
         static void updateJumpRemain(bool decrease = true, int newRemain = 1);
+        static void setJumpRemainFromSave(int remain);
 
         void setJumpCounter(JumpCounter* jumpCounter){jumpCounterLayout = jumpCounter;}
         JumpCounter* getJumpCounter(){ return jumpCounterLayout;}
@@ -19,6 +20,6 @@ class JumpData {
         static void setJumpRemain(int remain){ instance().mJumpRemain = remain;}
         static void increaseJumpRemain(int amount){ instance().mJumpRemain += amount;}
         static void decreaseJumpRemain(int amount){ instance().mJumpRemain -= amount;}
-        JumpCounter *jumpCounterLayout;
+        JumpCounter *jumpCounterLayout = nullptr;
         int mJumpRemain =-1;
 };

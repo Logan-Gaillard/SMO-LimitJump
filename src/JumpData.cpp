@@ -3,9 +3,6 @@
 
 JumpData::JumpData() {
     mJumpRemain = readFromSave();
-    if(mJumpRemain < 0) {
-        mJumpRemain = 0;
-    }
 }
 
 JumpData& JumpData::instance() { 
@@ -15,8 +12,7 @@ JumpData& JumpData::instance() {
 
 
 int JumpData::readFromSave(){
-    //TODO : Save and read jumps remains
-    return 10;
+    return 0;
 }
 
 void JumpData::updateJumpRemain(bool decrease, int amount){
@@ -26,6 +22,18 @@ void JumpData::updateJumpRemain(bool decrease, int amount){
     } else {
         JumpData::increaseJumpRemain(amount);
     }
-    instance().getJumpCounter()->tryUpdateCount();
+
+    if(instance().getJumpCounter() != nullptr){
+        instance().getJumpCounter()->tryUpdateCount();
+    }
+    
     SDLogger::log("Il reste %i sauts", getJumpRemain());
+}
+
+void JumpData::setJumpRemainFromSave(int remain){
+    setJumpRemain(remain);
+    if(instance().getJumpCounter() != nullptr){
+        instance().getJumpCounter()->tryUpdateCount();
+    }
+    SDLogger::log("Jump remain set from save: %i", getJumpRemain());
 }

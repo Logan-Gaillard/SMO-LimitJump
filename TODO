@@ -3,12 +3,11 @@
 - [X] Recherche sur les type de saut de Mario (saut et comment capturer lorsque Mario fait ces sauts)
 - [X] Recherche sur le bloquage des sauts de Mario
 - [X] Recherche sur des bruitages si plus de sauts
-- [ ] Ajout d'un compteur de saut restant (UI)
-- [ ] Scripting du compteur de saut
-- [ ] Sauvegarde des sauts restant de la partie
+- [X] Ajout d'un compteur de saut restant (UI)
+- [X] Scripting du compteur de saut
+- [X] Sauvegarde des sauts restant de la partie
 - [ ] Ajout de possibilité de regagner des sauts
 
 BUGS CONNUS:
-- Les chapimorphose peuvent sauter en secouant la manette
-- Le dive peut être répété entrainant un deuxième saut.
-- Les fleures trampoline spam leur animation de saut
+- Le Long jump ne consomme pas de sauts après une roulade
+- Le Long jump consome de sauts
