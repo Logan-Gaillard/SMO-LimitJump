@@ -4,8 +4,11 @@
 #include "Enemies/Pukupuku/PukupukuJump.hpp"
 #include "Enemies/KaronWing/KaronWingJump.hpp"
 #include "Enemies/KuriboWing/KuriboWingJump.hpp"
+#include "Item/CoinJump/CoinJump.h"
 #include "Layout/StageSceneLayout.h"
 #include "Library/Controller/JoyPadAccelPoseAnalyzer.h"
+#include "Library/Factory/Factory.h"
+#include "Library/LiveActor/ActorFactory.h"
 #include "Library/LiveActor/LiveActor.h"
 #include "Library/Nerve/IUseNerve.h"
 #include "Library/Nerve/Nerve.h"
@@ -20,6 +23,7 @@
 #include "Library/Draw/SubCameraRenderer.h"
 
 #include "Player/PlayerHackKeeper.h"
+#include "Scene/ProjectActorFactory.h"
 #include "Sequence/ChangeStageInfo.h"
 #include "System/GameDataFunction.h"
 #include "System/GameDataHolderAccessor.h"
@@ -44,8 +48,11 @@
 
 #include "util/modules.hpp"
 
-#include "Layout/JumpCounter.h"
-#include "JumpData.h"
+#include "Layout/JumpCounter.h" // My class JumpCounter, the layout that show jump remain
+#include "JumpData.h" //JumpData (Singleton) that manage jump remain and other things
+
+#include "Library/LiveActor/LiveActor.h"
+#include "Library/Factory/Factory.h"
 
 JumpCounter* jumpCounter = nullptr; //Jump remain layout
 bool isHakoniwaDemo = false;        //If Mario can't move (demo mode)
@@ -120,8 +127,8 @@ HOOK_DEFINE_TRAMPOLINE(PlayerActorHakoniwaControl){
     static void Callback(PlayerActorHakoniwa *thisPtr) {
         isHakoniwaDemo = rs::isActiveDemo(thisPtr);
 
-        const char* nerveActionName  = thisPtr->getNerveKeeper()->getActionCtrl()->getAction(0)->getActionName();
-        SDLogger::log("Current nerve action: %s", nerveActionName);
+        // const char* nerveActionName  = thisPtr->getNerveKeeper()->getActionCtrl()->getAction(0)->getActionName();
+        // SDLogger::log("Current nerve action: %s", nerveActionName);
 
         if(!isHakoniwaDemo) {
             if(al::isPadTriggerUp())
@@ -150,8 +157,12 @@ bool isJumpingNerve(al::Nerve* nerve){
     al::Nerve* psnwjWallJump = (al::Nerve*) exl::util::modules::GetTargetOffset(0x01D7E998);
     //PlayerStateHeadSliding
     al::Nerve* pshsdive = (al::Nerve*) exl::util::modules::GetTargetOffset(0x001D7E118);
+
     //PlayerStateLongJump
     //al::Nerve* psljJump = (al::Nerve*) exl::util::modules::GetTargetOffset(0x01D7E6D8);
+
+    // PlayerRollingJump
+    al::Nerve* prjJump = (al::Nerve*) exl::util::modules::GetTargetOffset(0x01D7F3C8);
 
     //KuriboStateHack
     al::Nerve* kshJump = (al::Nerve*) exl::util::modules::GetTargetOffset(0x01C9EA38);
@@ -188,6 +199,8 @@ bool isJumpingNerve(al::Nerve* nerve){
 
         nerve == psnwjWallJump ||
         nerve == pshsdive ||
+
+        nerve == prjJump ||
 
         //nerve == psljJump ||
 
@@ -247,7 +260,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayerActorHakoniwaHack){
         if(al::isFirstStep(thisPtr)){
             SDLogger::log("Now in hack : %s", playerHackKeeper->getCurrentHackName());
 
-            // Able to swing the controller if the player is in Bowser (Koopa) hack
+            // Able to swing if the player is in Bowser (Koopa) hack
             if(strcmp(playerHackKeeper->getCurrentHackName(), "Koopa") == 0) {
                 playerCanSwing = true;
             }else{
@@ -284,11 +297,40 @@ HOOK_DEFINE_TRAMPOLINE(CoinCounterTryEnd){
     }
 };
 
-/*HOOK_DEFINE_TRAMPOLINE(PakupakuCheckJumpCondition){
-    static void Callback(void* thisPtr){
-        if(JumpData::getJumpRemain() > 0) Orig(thisPtr);        
+// NameToCreator fait grossièrement : "nom de l'acteur" -> "fonction qui crée l'acteur"
+// Donc si j'ai bien compris, ça permet de traduire "nom de l'acteur", et le moteur convertir ce nom en une fonction de creation
+// ActorCreatorFonction inside of ActorFactory
+al::NameToCreator<al::ActorCreatorFunction> customActors[] = {
+    {"CoinJump", &CoinJump::createActor} //Point l'endroit de la création de l'acteur avec "JumpCoin"
+};
+
+// Actors factory
+HOOK_DEFINE_TRAMPOLINE(ProjectActorFactoryConstructor){
+    static void Callback(ProjectActorFactory* projectActorFactory){
+        // On appelle le constructeur d'origine
+        Orig(projectActorFactory);
+
+        // On calcul la taille de total de à attribuer avec les acteurs custom
+        int customCount = sizeof(customActors) / sizeof(customActors[0]);
+        int totalCount = projectActorFactory->mNumFactoryEntries + customCount;
+
+        // Allouage du nouveau tableau avec la nouvelle taille
+        auto* newEntries = new al::NameToCreator<al::ActorCreatorFunction>[totalCount];
+        
+        for(int i = 0; i < projectActorFactory->mNumFactoryEntries; i++){
+            newEntries[i] = projectActorFactory->mFactoryEntries[i]; // On copie les anciens acteurs dans le nouveau tableau
+        }
+
+        for(int i = 0; i < customCount; i++){
+            newEntries[projectActorFactory->mNumFactoryEntries + i] = customActors[i]; // On ajoute les acteurs custom
+        }
+
+        projectActorFactory->mFactoryEntries = newEntries; // On pointe vers le nouveau tableau
+        projectActorFactory->mNumFactoryEntries = totalCount; // On met à jour le nombre total d'acteurs dans la factory
+
+        SDLogger::log("Tout s'est bien passé !");
     }
-};*/
+};
 
 extern "C" void exl_main(void* x0, void* x1) {
     /* Setup hooking environment. */
@@ -315,6 +357,8 @@ extern "C" void exl_main(void* x0, void* x1) {
     PukupukuJump::initHooks();
 
     PlayerActorHakoniwaHack::InstallAtSymbol("_ZN19PlayerActorHakoniwa7exeHackEv");
+
+    ProjectActorFactoryConstructor::InstallAtSymbol("_ZN19ProjectActorFactoryC2Ev");
 
     SDLogger::instance().init();
 
