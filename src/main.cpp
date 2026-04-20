@@ -4,17 +4,20 @@
 #include "Enemies/Pukupuku/PukupukuJump.hpp"
 #include "Enemies/KaronWing/KaronWingJump.hpp"
 #include "Enemies/KuriboWing/KuriboWingJump.hpp"
-#include "Item/CoinJump/CoinJump.h"
+#include "Actors/Item/CoinJump/CoinJump.h"
 #include "Layout/StageSceneLayout.h"
 #include "Library/Controller/JoyPadAccelPoseAnalyzer.h"
 #include "Library/Factory/Factory.h"
 #include "Library/LiveActor/ActorFactory.h"
+#include "Library/LiveActor/ActorMovementFunction.h"
+#include "Library/LiveActor/ActorPoseUtil.h"
 #include "Library/LiveActor/LiveActor.h"
 #include "Library/Nerve/IUseNerve.h"
 #include "Library/Nerve/Nerve.h"
 #include "Library/Nerve/NerveKeeper.h"
 #include "Library/Nerve/NerveAction.h"
 #include "Library/Nerve/NerveActionCtrl.h"
+#include "Library/Scene/Scene.h"
 #include "Library/Se/SeFunction.h"
 #include "Library/Nerve/NerveUtil.h"
 #include "Library/Nature/NatureUtil.h"
@@ -26,6 +29,7 @@
 #include "Scene/ProjectActorFactory.h"
 #include "Sequence/ChangeStageInfo.h"
 #include "System/GameDataFunction.h"
+#include "System/GameDataHolder.h"
 #include "System/GameDataHolderAccessor.h"
 #include "Util/PlayerUtil.h"
 #include "Util/Hack.h"
@@ -48,11 +52,13 @@
 
 #include "util/modules.hpp"
 
+#include "Actors/InitActors.hpp"
 #include "Layout/JumpCounter.h" // My class JumpCounter, the layout that show jump remain
 #include "JumpData.h" //JumpData (Singleton) that manage jump remain and other things
 
 #include "Library/LiveActor/LiveActor.h"
 #include "Library/Factory/Factory.h"
+#include "Library/LiveActor/ActorPoseKeeper.h"
 
 JumpCounter* jumpCounter = nullptr; //Jump remain layout
 bool isHakoniwaDemo = false;        //If Mario can't move (demo mode)
@@ -72,6 +78,10 @@ HOOK_DEFINE_TRAMPOLINE(StageSceneControl){
         if(al::isPadTriggerRight()){
             GameDataHolderAccessor gameDataHolderAccessor(thisPtr->mSceneObjHolder);
             ChangeStageInfo changeStageInfo = ChangeStageInfo(gameDataHolderAccessor.mData, "", (const char*)"MoonWorldCaptureParadeStage", false, -1, ChangeStageInfo::SubScenarioType::NO_SUB_SCENARIO);
+            GameDataFunction::tryChangeNextStage(gameDataHolderAccessor.mData, &changeStageInfo);
+        }else if(al::isPadTriggerLeft()){
+            GameDataHolderAccessor gameDataHolderAccessor(thisPtr->mSceneObjHolder);
+            ChangeStageInfo changeStageInfo = ChangeStageInfo(gameDataHolderAccessor.mData, "", thisPtr->mStageName.cstr(), false, -1, ChangeStageInfo::SubScenarioType::NO_SUB_SCENARIO);
             GameDataFunction::tryChangeNextStage(gameDataHolderAccessor.mData, &changeStageInfo);
         }
         Orig(thisPtr);
@@ -301,7 +311,7 @@ HOOK_DEFINE_TRAMPOLINE(CoinCounterTryEnd){
 // Donc si j'ai bien compris, ça permet de traduire "nom de l'acteur", et le moteur convertir ce nom en une fonction de creation
 // ActorCreatorFonction inside of ActorFactory
 al::NameToCreator<al::ActorCreatorFunction> customActors[] = {
-    {"CoinJump", &CoinJump::createActor} //Point l'endroit de la création de l'acteur avec "JumpCoin"
+    {"CoinJump", &CoinJump::createActor} //Point l'endroit de la création de l'acteur avec "CoinJump"
 };
 
 // Actors factory
@@ -366,4 +376,6 @@ extern "C" void exl_main(void* x0, void* x1) {
     JumpData::readFromSave();
 
     SaveJump::initHooks();
+
+    InitActors::initHook();
 };
